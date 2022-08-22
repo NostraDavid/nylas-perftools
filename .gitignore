@@ -8,12 +8,12 @@
 !README.md
 !setup.py
 !stacksampler.py
+!yeet.py
 
 # folders
 !images/
 !stackcollector/
 !tests/
-
 
 # reignore
 __pycache__

@@ -1,16 +1,19 @@
-import calendar
+from datetime import datetime
+from pathlib import Path
+import structlog
+from fastapi import FastAPI, Query
+from starlette.staticfiles import StaticFiles
 
-import click
-import dateparser
-from collector import getdb
-from flask import Flask, jsonify, render_template, request
+from stackcollector.collector import getdb
+from stackcollector.settings import settings
+from fastapi.responses import HTMLResponse
 
-app = Flask(__name__)
-app.config["DEBUG"] = True
+HERE = Path(__file__).parent
+app = FastAPI()
+app.mount("/static", StaticFiles(directory="stackcollector/static"), name="static")
 
-
-def _parse_relative_date(datestr):
-    return calendar.timegm(dateparser.parse(datestr).utctimetuple())
+settings.DEBUG = True
+logger = structlog.get_logger()
 
 
 class Node(object):
@@ -52,17 +55,14 @@ class Node(object):
         self.add(frames, value)
 
 
-@app.route("/data")
-def data():
-    from_ = request.args.get("from")
-    if from_ is not None:
-        from_ = _parse_relative_date(from_)
-    until = request.args.get("until")
-    if until is not None:
-        until = _parse_relative_date(until)
-    threshold = float(request.args.get("threshold", 0))
+@app.get("/data")
+def data(
+    from_: datetime = Query(default=None, alias="from"),
+    until: datetime = Query(default=None, alias="until"),
+    threshold: float = 0,
+):
     root = Node("root")
-    with getdb(app.config["DBPATH"]) as db:
+    with getdb(settings.DBPATH) as db:
         keys = db.keys()
         for k in keys:
             entries = db[k].split()
@@ -75,21 +75,11 @@ def data():
                     value += v
             frames = k.split(";")
             root.add(frames, value)
-    return jsonify(root.serialize(threshold * root.value))
+    return root.serialize(threshold * root.value)
 
 
-@app.route("/")
+@app.get("/")
 def render():
-    return app.send_static_file("index.html")
-
-
-@click.command()
-@click.option("--port", type=int, default=9999)
-@click.option("--dbpath", "-d", default="/var/lib/stackcollector/db")
-def run(port, dbpath):
-    app.config["DBPATH"] = dbpath
-    app.run(host="0.0.0.0", port=port)
-
-
-if __name__ == "__main__":
-    run()
+    HERE = Path(__file__).parent
+    with open(HERE / "static" / "index.html") as fp:
+        return HTMLResponse(content=fp.read(), status_code=200)

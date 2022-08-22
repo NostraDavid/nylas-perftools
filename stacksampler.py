@@ -15,25 +15,17 @@ Then curl localhost:16384 to get a list of stack frames and call counts.
 from __future__ import print_function
 
 import atexit
-import collections
+from collections import defaultdict
 import signal
-import sys
+from types import FrameType
 import time
-
+from typing import Iterable
+from structlog import get_logger
+from structlog.types import FilteringBoundLogger
 from werkzeug.serving import BaseWSGIServer, WSGIRequestHandler
 from werkzeug.wrappers import Request, Response
 
-try:
-    from nylas.logging import get_logger
-
-    logger = get_logger()
-except ImportError:
-
-    class _Logger(object):
-        def info(msg):
-            print(msg, file=sys.stderr)
-
-    logger = _Logger()
+logger: FilteringBoundLogger = get_logger()
 
 
 class Sampler(object):
@@ -43,13 +35,13 @@ class Sampler(object):
     this uses signals, it only works on the main thread.
     """
 
-    def __init__(self, interval=0.005):
-        self.interval = interval
+    def __init__(self, interval=0.005) -> None:
+        self.interval: float = interval
         self._started = None
-        self._stack_counts = collections.defaultdict(int)
+        self._stack_counts: defaultdict[str, int] = defaultdict(int)
 
-    def start(self):
-        self._started = time.time()
+    def start(self) -> None:
+        self._started: float = time.time()
         try:
             signal.signal(signal.SIGVTALRM, self._sample)
         except ValueError:
@@ -58,77 +50,80 @@ class Sampler(object):
         signal.setitimer(signal.ITIMER_VIRTUAL, self.interval)
         atexit.register(self.stop)
 
-    def _sample(self, signum, frame):
-        stack = []
+    def _sample(self, signum: int, frame: FrameType | None) -> None:
+        stack: list = []
         while frame is not None:
             stack.append(self._format_frame(frame))
-            frame = frame.f_back
+            frame: FrameType | None = frame.f_back
 
-        stack = ";".join(reversed(stack))
-        self._stack_counts[stack] += 1
+        stack_scsv: str = ";".join(reversed(stack))
+        self._stack_counts[stack_scsv] += 1
         signal.setitimer(signal.ITIMER_VIRTUAL, self.interval)
 
-    def _format_frame(self, frame):
-        return "{}({})".format(frame.f_code.co_name, frame.f_globals.get("__name__"))
+    def _format_frame(self, frame: FrameType) -> str:
+        return f"{frame.f_code.co_name}({frame.f_globals.get('__name__')})"
 
-    def output_stats(self):
+    def output_stats(self) -> str:
         if self._started is None:
             return ""
-        elapsed = time.time() - self._started
-        lines = ["elapsed {}".format(elapsed), "granularity {}".format(self.interval)]
-        ordered_stacks = sorted(
+        elapsed: float = time.time() - self._started
+        lines: list[str] = [
+            f"elapsed {elapsed}",
+            f"granularity {self.interval}",
+        ]
+        ordered_stacks: list[tuple[str, int]] = sorted(
             self._stack_counts.items(), key=lambda kv: kv[1], reverse=True
         )
-        lines.extend(["{} {}".format(frame, count) for frame, count in ordered_stacks])
+        lines.extend([f"{frame} {count}" for frame, count in ordered_stacks])
         return "\n".join(lines) + "\n"
 
-    def reset(self):
+    def reset(self) -> None:
         self._started = time.time()
-        self._stack_counts = collections.defaultdict(int)
+        self._stack_counts = defaultdict(int)
 
-    def stop(self):
+    def stop(self) -> None:
         self.reset()
         signal.setitimer(signal.ITIMER_VIRTUAL, 0)
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.stop()
 
 
 class Emitter(object):
     """A really basic HTTP server that listens on (host, port) and serves the
-    process's profile data when requested. Resets internal sampling stats if
+    process' profile data when requested. Resets internal sampling stats if
     reset=true is passed."""
 
-    def __init__(self, sampler, host, port):
-        self.sampler = sampler
-        self.host = host
-        self.port = port
+    def __init__(self, sampler: Sampler, host: str, port: int) -> None:
+        self.sampler: Sampler = sampler
+        self.host: str = host
+        self.port: int = port
 
-    def handle_request(self, environ, start_response):
+    def handle_request(self, environ, start_response) -> Iterable[bytes]:
         stats = self.sampler.output_stats()
-        request = Request(environ)
+        request: Request = Request(environ)
         if request.args.get("reset") in ("1", "true"):
             self.sampler.reset()
-        response = Response(stats)
+        response: Response = Response(stats)
         return response(environ, start_response)
 
-    def run(self):
-        server = BaseWSGIServer(
+    def run(self) -> None:
+        server: BaseWSGIServer = BaseWSGIServer(
             self.host, self.port, self.handle_request, _QuietHandler
         )
         server.log = lambda *args, **kwargs: None
-        logger.info("Serving profiles on port {}".format(self.port))
+        logger.info("serving-profiles", port=self.port)
         server.serve_forever()
 
 
 class _QuietHandler(WSGIRequestHandler):
-    def log_request(self, *args, **kwargs):
+    def log_request(self, *args, **kwargs) -> None:
         """Suppress request logging so as not to pollute application logs."""
         pass
 
 
-def run_profiler(host="0.0.0.0", port=16384):
-    sampler = Sampler()
-    sampler.start()
-    e = Emitter(sampler, host, port)
+async def run_profiler(host="0.0.0.0", port=16384) -> None:
+    s = Sampler()
+    s.start()
+    e = Emitter(s, host, port)
     e.run()

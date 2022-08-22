@@ -47,13 +47,13 @@ The collector assumes that processes expose profiles in the [flamegraph line for
 
 ```
 # Every minute, gather stacks from a local process listening on port 16384.
-python -m stackcollector.collector --host localhost --ports 16384 --interval 60
+np collector --host localhost --ports 16384 --interval 60
 ```
 
 ## Running the visualizer
 
 ```
-python -m stackcollector.visualizer --port 5555
+np visualizer --port 5555
 ```
 
 Then visit e.g. `http://localhost:5555?from=-15minutes` to see data from the past 15 minutes.

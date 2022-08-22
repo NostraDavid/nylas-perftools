@@ -17,10 +17,7 @@ import json
 import sys
 import timeit
 
-try:
-    import gevent
-except ImportError:
-    gevent = None
+gevent = None
 
 
 class Node(object):
