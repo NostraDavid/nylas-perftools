@@ -15,7 +15,7 @@ def collect(dbpath: str, host: str, port: int) -> None:
     except (ConnectionError, HTTPError) as exc:
         logger.exception("error collecting data", host=host, port=port)
         return
-    data: list[str] = resp.text.splitlines()
+    data: list[bytes] = resp.content.splitlines()
     try:
         save(data, host, port, dbpath)
     except Exception as exc:
@@ -24,18 +24,20 @@ def collect(dbpath: str, host: str, port: int) -> None:
     logger.info("data collected", host=host, port=port, num_stacks=len(data) - 2)
 
 
-def save(data: list[str], host, port, dbpath) -> None:
+def save(data: list[bytes], host, port, dbpath) -> None:
     """Save the data to a database"""
     now: int = int(time.time())
     # note that dbm converts strings to bytes; same for keys and values
     with dbm.open(dbpath, "c") as db:
+        logger.info("saving-data", data=data)
+        # only grab elapsed and granularity
         for line in data[2:]:
             try:
-                stack, value = line.split(" ")
+                stack, value = line.split(b" ")
             except ValueError:
                 continue
 
-            entry = f"{host}:{port}:{now}:{value} "
+            entry: bytes = bytes(f"{host}:{port}:{now}:{int(value)} ", encoding="utf-8")
             if stack in db:
                 db[stack] += entry
             else:

@@ -1,23 +1,26 @@
-from time import sleep
+from time import time
 
 
 def b() -> None:
-    sleep(0.1)
+    r = 100_000
+    for x in range(r):
+        if x % (r / 10):
+            print("yote!")
 
 
-def c():
+def c() -> None:
     d()
-    d()
 
 
-def d():
-    sleep(0.25)
+def d() -> None:
+    r = 100_000
+    for x in range(r):
+        if x % (r / 10):
+            print("yeet!")
 
 
 def a() -> None:
+    print(time())
     b()
-    b()
-    b()
-    c()
-    b()
+    print(time())
     c()

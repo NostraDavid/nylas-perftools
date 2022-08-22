@@ -6,8 +6,8 @@ from yote import a
 
 run_profiler()
 
-
-for x in range(100):
+x = 0
+while True:
     print(f"step {x}")
     x += 1
     a()

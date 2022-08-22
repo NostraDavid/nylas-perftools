@@ -1,18 +1,19 @@
 from time import sleep
 
 import click
-import structlog
+from structlog import get_logger
+from structlog.types import FilteringBoundLogger
 import uvicorn
 
 from stackcollector.collector import collect
 from stackcollector.settings import settings
 from stackcollector.visualizer import app
 
-logger = structlog.get_logger()
+logger: FilteringBoundLogger = get_logger()
 
 
 @click.group()
-def sc():
+def sc() -> None:
     """StackCollector"""
     pass
 
@@ -47,6 +48,6 @@ def collector(dbpath: str, host: list[str], ports: list[int], interval: int):
 @sc.command()
 @click.option("--port", type=int, default=5555)
 @click.option("--dbpath", "-d", default="/var/lib/stackcollector/db")
-def visualizer(port: int, dbpath: str):
+def visualizer(port: int, dbpath: str) -> None:
     settings.DBPATH = dbpath
     uvicorn.run(app, host="0.0.0.0", port=port)

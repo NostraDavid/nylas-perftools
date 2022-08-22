@@ -72,7 +72,6 @@ def data(
         for k in keys:
             entries: list[bytes] = db[k].split(b" ")
             # breakpoint()
-            logger.info("entries", entries=entries)
             value: int = 0
             for e in entries:
                 if len(e.split(b":")) < 4:
