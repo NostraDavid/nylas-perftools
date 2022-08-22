@@ -1,9 +1,9 @@
 from time import sleep
 import asyncio
 
-import stacksampler
+from stacksampler import run_profiler
 
-asyncio.run(stacksampler.run_profiler())
+run_profiler()
 
 x = 0
 while True:

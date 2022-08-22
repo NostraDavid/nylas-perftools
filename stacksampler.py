@@ -24,6 +24,7 @@ from structlog import get_logger
 from structlog.types import FilteringBoundLogger
 from werkzeug.serving import BaseWSGIServer, WSGIRequestHandler
 from werkzeug.wrappers import Request, Response
+from threading import Thread
 
 logger: FilteringBoundLogger = get_logger()
 
@@ -89,7 +90,7 @@ class Sampler(object):
         self.stop()
 
 
-class Emitter(object):
+class Emitter(Thread):
     """A really basic HTTP server that listens on (host, port) and serves the
     process' profile data when requested. Resets internal sampling stats if
     reset=true is passed."""
@@ -98,6 +99,7 @@ class Emitter(object):
         self.sampler: Sampler = sampler
         self.host: str = host
         self.port: int = port
+        Thread.__init__(self)
 
     def handle_request(self, environ, start_response) -> Iterable[bytes]:
         stats = self.sampler.output_stats()
@@ -122,8 +124,10 @@ class _QuietHandler(WSGIRequestHandler):
         pass
 
 
-async def run_profiler(host="0.0.0.0", port=16384) -> None:
+def run_profiler(host="0.0.0.0", port=16384) -> None:
     s = Sampler()
     s.start()
     e = Emitter(s, host, port)
-    e.run()
+    # e.run()
+    e.daemon = True
+    e.start()
