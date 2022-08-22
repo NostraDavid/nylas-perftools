@@ -1,9 +1,20 @@
-*.pyc
+/*
 
-bin/
-build/
-dist/
-include/
-lib/
-local/
-stackcollector.egg-info/
+# files
+!LICENSE
+!poetry.lock
+!py2devtools.py
+!pyproject.toml
+!README.md
+!setup.py
+!stacksampler.py
+
+# folders
+!images/
+!stackcollector/
+!tests/
+
+
+# reignore
+__pycache__
+*.egg-info
