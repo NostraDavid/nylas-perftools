@@ -2,7 +2,7 @@
 name = "nylas-perftools"
 version = "0.0.0"
 description = ""
-authors = ["NostraDavid <55331731+NostraDavid@users.noreply.github.com>"]
+authors = ["NostraDavid <55331731+nostradavid@users.noreply.github.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
@@ -12,6 +12,9 @@ Flask = "^2.2.2"
 nylas-production-python = "^0.4.3"
 click = "^8.1.3"
 dateparser = "^1.1.1"
+gevent = "^21.12.0"
+Werkzeug = "^2.2.2"
+pandas = "^1.4.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.2"
