@@ -1,10 +1,11 @@
+import dbm
 from datetime import datetime
 from pathlib import Path
+from typing import KeysView
 import structlog
 from fastapi import FastAPI, Query
 from starlette.staticfiles import StaticFiles
 
-from stackcollector.collector import getdb
 from stackcollector.settings import settings
 from fastapi.responses import HTMLResponse
 
@@ -61,14 +62,17 @@ def data(
     until: datetime = Query(default=None, alias="until"),
     threshold: float = 0,
 ):
+    logger.info("Logging /data", from_=from_, until=until, threshold=threshold)
     root = Node("root")
-    with getdb(settings.DBPATH) as db:
-        keys = db.keys()
+    logger.info("Opening DB", db=settings.DBPATH)
+    with dbm.open(file=settings.DBPATH, flag="c") as db:
+        keys: KeysView[dbm._KeyType] = db.keys()
         for k in keys:
-            entries = db[k].split()
-            value = 0
+            entries: list[bytes] = db[k].split()
+            logger.info("entries", entries=entries)
+            value: int = 0
             for e in entries:
-                host, port, ts, v = e.split(":")
+                host, port, ts, v = e.split(b":")
                 ts = int(ts)
                 v = int(v)
                 if (from_ is None or ts >= from_) and (until is None or ts <= until):

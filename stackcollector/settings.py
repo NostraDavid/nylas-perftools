@@ -5,7 +5,7 @@ from pydantic import BaseSettings
 
 class Settings(BaseSettings):
     DEBUG: bool = False
-    DBPATH: str = ""
+    DBPATH: str = "/var/lib/stackcollector/db"
 
 
 settings = Settings()
